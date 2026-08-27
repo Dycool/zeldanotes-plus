@@ -1,0 +1,13 @@
+/* Zelda Notes Plus - Injected Component Styles */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+/* Clean, modern typography: Outfit for headings/titles, Inter for body/labels */
+body, button, input, select, textarea, div, span, p, a, li {
+    font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+b, strong, h1, h2, h3, h4, [class*="bold"], [class*="Bold"], [class*="title"], [class*="Title"], [class*="heading"], [class*="Heading"] {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 700;
+}

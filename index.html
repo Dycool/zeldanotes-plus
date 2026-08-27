@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Zelda Notes Plus</title>
+    <meta name="description" content="Nintendo Switch Online Zelda Notes Web Service">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" type="image/x-icon" href="favicon.ico">
+    <!-- Google Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="dark-theme">
+
+    <!-- Full-Screen Login Gate for Unauthenticated Users (Exact NSO Layout) -->
+    <section class="login-gate" id="loginGate">
+        <div class="login-gate-card">
+            <div class="login-logo">
+                <svg class="triforce-svg-login" viewBox="0 0 100 88" focusable="false" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="login-triforce-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#ffe270"/>
+                            <stop offset="50%" stop-color="#d4af37"/>
+                            <stop offset="100%" stop-color="#9a7114"/>
+                        </linearGradient>
+                    </defs>
+                    <polygon points="50,2 74,43 26,43" fill="url(#login-triforce-gold)" />
+                    <polygon points="24,46 48,87 0,87" fill="url(#login-triforce-gold)" />
+                    <polygon points="76,46 100,87 52,87" fill="url(#login-triforce-gold)" />
+                </svg>
+            </div>
+            <h2>Zelda Notes Plus</h2>
+            <p class="login-console-note">Sign in with your Nintendo Account to access Zelda Notes.</p>
+
+            <div class="rate-limit-banner hidden" id="rateLimitBanner" role="alert">
+                <i class="fa-solid fa-hourglass-half"></i>
+                <span id="rateLimitBannerText">nxapi authentication temporarily rate-limited.</span>
+            </div>
+
+            <button class="btn-app-sign-in" id="beginSignInBtn" type="button">Sign In</button>
+
+            <div class="login-workflow hidden" id="loginWorkflow">
+                <div class="nxapi-disclosure" id="nxapiDisclosure">
+                    <div class="nxapi-disclosure-copy">
+                        <strong>Third-party service disclosure</strong>
+                        <p>Sign-in uses the third-party service nxapi-znca-api, operated by Ellie Gray. Your Nintendo Account ID token, Coral session token, and encrypted Coral API requests/responses are sent to this service for Coral attestation and request encryption.</p>
+                        <a class="nxapi-help-link" href="https://github.com/samuelthomas2774/nxapi-znca-api/blob/docs/docs/end-user-help.md" target="_blank" rel="noopener noreferrer">Learn more about nxapi</a>
+                    </div>
+                    <label class="nxapi-consent-row">
+                        <input type="checkbox" id="nxapiConsentCheckbox" required>
+                        <span>I understand and agree to send this data to nxapi.</span>
+                    </label>
+                </div>
+
+                <div class="auth-steps">
+                    <div class="step-box">
+                        <span>1</span>
+                        <div>
+                            <strong>Sign in on Nintendo Account</strong>
+                            <p>Click below to open Nintendo’s official sign-in page:</p>
+                            <a class="btn-nintendo-oauth" id="nintendoOAuthGateBtn" href="#" target="_blank" rel="noopener noreferrer">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Nintendo Sign In
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="step-box">
+                        <span>2</span>
+                        <div>
+                            <strong>Complete Sign In &amp; Paste URL / Token</strong>
+                            <p>After signing in, right-click Select this person → Copy link address. Paste it below and we will continue automatically.</p>
+                            <textarea id="idTokenGateInput" placeholder="Paste redirect URL or session token here…"></textarea>
+                            <button type="button" class="btn-paste-token" id="pasteAuthGateBtn"><i class="fa-regular fa-clipboard"></i> Paste from clipboard</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="remember-me-option">
+                    <label>
+                        <input type="checkbox" id="rememberMeCheckbox">
+                        <span><strong>Remember my Nintendo Account on this device</strong><br><small>Your Nintendo Account session is securely encrypted on this device for up to 30 days so you can resume without signing in each time. After 30 days, you’ll need to sign in again.</small></span>
+                    </label>
+                </div>
+
+                <button class="btn-submit-gate" id="submitAuthGateBtn">
+                    <i class="fa-solid fa-right-to-bracket"></i> Sign In
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- In-App Fullscreen Webview Overlay -->
+    <section class="inapp-game-webview hidden" id="inAppGameWebview" aria-label="Zelda Notes Web Service">
+        <div class="inapp-webview-frame-wrap">
+            <div class="gws-native-loading hidden" id="gwsNativeLoading">
+                <div class="gws-native-loading-inner">
+                    <span class="gws-native-loading-spinner" aria-hidden="true"></span>
+                    <strong class="gws-native-loading-title">Zelda Notes</strong>
+                    <span class="gws-native-loading-status hidden" aria-live="polite"></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+/* ==========================================================================
+   Zelda Notes Plus - Unified Zelda Theme Stylesheet
+   ========================================================================== */
+
+:root {
+    --bg-main: #090e0b;
+    --bg-card: #ffffff;
+    --bg-input: #f8fafc;
+    --border-color: #e2e8f0;
+
+    --zelda-gold: #d4af37;
+    --zelda-gold-bright: #ffd700;
+    --zelda-green-dark: #0d281c;
+    --zelda-green: #143d2b;
+    --zelda-green-hover: #1c523a;
+    --zelda-accent: #10b981;
+
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+
+    --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --shadow-card: 0 20px 50px rgba(0, 0, 0, 0.45);
+    --shadow-gold: 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    line-height: 1.5;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Login Gate (Zelda-Themed NSO Layout)
+   ========================================================================== */
+
+.login-gate {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: radial-gradient(circle at 50% 30%, #152e22 0%, #090e0b 85%);
+}
+
+.login-gate-card {
+    width: 100%;
+    max-width: 580px;
+    padding: 0 26px 30px;
+    text-align: center;
+    background: transparent;
+    border: 0;
+    color: #fff;
+}
+
+.login-logo {
+    width: 100px;
+    height: 90px;
+    margin: 16px auto 18px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.triforce-svg-login {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 16px rgba(212, 175, 55, 0.45));
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.triforce-svg-login:hover {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 24px rgba(255, 215, 0, 0.65));
+}
+
+.login-gate-card h2 {
+    font-family: var(--font-heading);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin-bottom: 6px;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.login-gate-card .login-console-note {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.btn-app-sign-in {
+    width: 100%;
+    margin: 16px 0 14px;
+    padding: 16px 20px;
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1b4e36 0%, #123827 100%);
+    color: #ffffff;
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-app-sign-in:hover {
+    background: linear-gradient(135deg, #226144 0%, #174731 100%);
+    border-color: var(--zelda-gold-bright);
+    box-shadow: 0 6px 24px rgba(212, 175, 55, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-app-sign-in:active {
+    transform: translateY(1px);
+}
+
+.login-help {
+    display: inline-block;
+    color: var(--zelda-gold);
+    font-size: 14px;
+    text-decoration: none;
+    opacity: 0.9;
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.login-help:hover {
+    opacity: 1;
+    color: var(--zelda-gold-bright);
+    text-decoration: underline;
+}
+
+/* Login Workflow Card */
+.login-workflow {
+    margin-top: 20px;
+    text-align: left;
+    color: var(--text-primary);
+    max-width: 620px;
+    margin-inline: auto;
+    padding: 22px;
+    border-radius: var(--radius-lg);
+    background: #ffffff;
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    box-shadow: var(--shadow-card);
+}
+
+.nxapi-disclosure {
+    margin: 0 0 14px;
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.nxapi-disclosure-copy {
+    padding: 14px 15px 12px;
+}
+
+.nxapi-disclosure-copy strong {
+    display: block;
+    margin-bottom: 5px;
+    color: #0f172a;
+    font-family: var(--font-heading);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.nxapi-disclosure-copy p {
+    color: #475569;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.nxapi-help-link {
+    display: inline-block;
+    margin-top: 6px;
+    color: #9a7314;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.nxapi-help-link:hover {
+    color: #b8860b;
+    text-decoration: underline;
+}
+
+.nxapi-consent-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 42px;
+    padding: 8px 14px;
+    background: #f1f5f9;
+    border-top: 1px solid var(--border-color);
+    color: #0f172a;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.nxapi-consent-row input {
+    accent-color: var(--zelda-green);
+    width: 16px;
+    height: 16px;
+}
+
+.auth-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.step-box {
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+    background: #f8fafc;
+    color: #0f172a;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.step-box span:first-child {
+    width: 26px;
+    height: 26px;
+    background: linear-gradient(135deg, #143d2b 0%, #0d281c 100%);
+    color: var(--zelda-gold-bright);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.step-box strong {
+    display: block;
+    font-size: 13px;
+    color: #0f172a;
+    margin-bottom: 2px;
+}
+
+.step-box p {
+    color: #64748b;
+    font-size: 12px;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.btn-nintendo-oauth {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--zelda-green);
+    color: #ffffff;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-nintendo-oauth:hover {
+    background: var(--zelda-green-hover);
+    border-color: var(--zelda-gold-bright);
+}
+
+.btn-nintendo-oauth.disabled {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.step-box textarea {
+    width: 100%;
+    min-height: 60px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--radius-sm);
+    color: #0f172a;
+    padding: 8px;
+    font-family: monospace;
+    font-size: 11px;
+    resize: none;
+    transition: border-color 0.15s ease;
+}
+
+.step-box textarea:focus {
+    outline: none;
+    border-color: var(--zelda-green);
+}
+
+.btn-paste-token {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 6px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--radius-sm);
+    background: #ffffff;
+    color: var(--zelda-green);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-paste-token:hover {
+    background: #f1f5f9;
+    border-color: var(--zelda-green);
+}
+
+.remember-me-option {
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: #475569;
+    line-height: 1.4;
+}
+
+.remember-me-option label {
+    display: flex;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.remember-me-option input {
+    accent-color: var(--zelda-green);
+    margin-top: 2px;
+}
+
+.btn-submit-gate {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1b4e36 0%, #123827 100%);
+    color: var(--zelda-gold-bright);
+    font-family: var(--font-heading);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-submit-gate:hover {
+    background: linear-gradient(135deg, #226144 0%, #174731 100%);
+    border-color: var(--zelda-gold-bright);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.btn-submit-gate:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.rate-limit-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    border-radius: 8px;
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+}
+
+/* ==========================================================================
+   In-App Fullscreen Webview Overlay
+   ========================================================================== */
+
+.inapp-game-webview {
+    position: fixed;
+    inset: 0;
+    z-index: 280;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    background: #000000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.inapp-webview-frame-wrap {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background: #000000;
+    overflow: hidden;
+}
+
+.inapp-webview-frame-wrap iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+/* Native Loading Spinner */
+.gws-native-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000000;
+    color: #ffffff;
+    transition: opacity 0.2s ease;
+}
+
+.gws-native-loading.is-complete {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.gws-native-loading-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.gws-native-loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--zelda-gold);
+    border-radius: 50%;
+    animation: gws-spin 0.8s linear infinite;
+}
+
+.gws-native-loading-title {
+    font-family: var(--font-heading);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--zelda-gold);
+}
+
+@keyframes gws-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+    .login-gate {
+        padding: 12px;
+    }
+    .login-gate-card {
+        padding-inline: 4px;
+    }
+    .login-workflow {
+        padding: 16px;
+    }
+}
