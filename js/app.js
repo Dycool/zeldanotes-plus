@@ -263,7 +263,9 @@ async function nsoDetectBackend() {
         if (typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.sendMessage === 'function') {
             try {
                 const response = await new Promise((resolve) => {
-                    const timeout = setTimeout(() => resolve(null), 300);
+                    // Keep extension detection from delaying a resumed session;
+                    // a responsive extension answers well within this window.
+                    const timeout = setTimeout(() => resolve(null), 120);
                     try {
                         chrome.runtime.sendMessage(NSO_EXTENSION_ID, { type: 'NSO_PING' }, (res) => {
                             clearTimeout(timeout);
@@ -278,14 +280,12 @@ async function nsoDetectBackend() {
 
                 if (response && (response.status === 'ok' || response.ok || response.version)) {
                     window.nsoBackendMode = 'extension';
-                    console.log(`%c[backend:extension]%c Connected to browser extension (v${response.version || '1.0.0'})`, 'color: #10b981; font-weight: bold', 'color: inherit');
                     return 'extension';
                 }
             } catch (_) {}
         }
 
         window.nsoBackendMode = 'worker';
-        console.log('%c[backend:worker]%c Using Cloudflare Worker backend', 'color: #3b82f6; font-weight: bold', 'color: inherit');
         return 'worker';
     })();
 
@@ -720,7 +720,6 @@ async function nxapiGenerateF(method, token, userData = {}, requestOptions = {})
         bindNxapiCoralContext(userData.na_id, activeZncaVersion());
     }
 
-    console.log(`%c[nxapi:f${method}]%c Generating Method ${method} attestation`, "color: #f97316; font-weight: bold", "color: inherit");
     const response = await nxapiFetch('f', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -854,7 +853,6 @@ async function generateCoralViaTokenBroker({ idToken, naId, language, country, b
         ? activeZncaVersion()
         : (typeof ZNCA_VERSION === 'string' ? ZNCA_VERSION : '3.4.1');
 
-    console.log('%c[coral:f1]%c Generating Coral session token (Method 1: Account Login)', "color: #3b82f6; font-weight: bold", "color: inherit");
     const response = await fetch(`${WORKER_URL}/api/nso/cache/coral/get-or-create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -1009,7 +1007,6 @@ class WebServiceManager {
         const zncaVersion = activeZncaVersion();
         const isExtension = window.nsoBackendMode === 'extension';
         const providerLabel = isExtension ? 'nxapi method 2' : 'Worker native f2';
-        console.log(`%c[coral:f2]%c Generating GameWebServiceToken for service ${serviceId} via ${providerLabel}`, "color: #3b82f6; font-weight: bold", "color: inherit");
 
         const response = await fetch(`${WORKER_URL}/api/nso/service/token`, {
             method: 'POST',
@@ -1053,7 +1050,6 @@ class WebServiceManager {
         if (!naId) throw new Error('Nintendo Account ID missing in session. Please sign out and sign in again.');
         const coralUserId = String(userSession?.result?.user?.id || userSession?.user?.id || '');
 
-        console.log(`%c[coral:f2:fallback]%c Generating GameWebServiceToken for service ${serviceId} via client fallback`, "color: #ec4899; font-weight: bold", "color: inherit");
         const attestation = await nxapiGenerateF(2, token, {
             na_id: naId,
             coral_user_id: coralUserId
@@ -1101,7 +1097,6 @@ class WebServiceManager {
         if (!forceFresh) {
             const cached = this.getCachedGameWebServiceToken(idStr);
             if (cached) {
-                console.log(`%c[GWS:Cache HIT]%c Reusing cached token for service ${idStr}`, "color: #10b981; font-weight: bold", "color: inherit");
                 return cached;
             }
         }
@@ -1118,7 +1113,6 @@ class WebServiceManager {
             }
 
             if (!result?.token && !result?.unavailable) {
-                console.log(`%c[GWS:Cache MISS]%c Requesting token for service ${idStr}...`, "color: #f59e0b; font-weight: bold", "color: inherit");
                 result = await this.requestBrokerGeneratedToken(idStr, traceId, {
                     signal: options.signal,
                     forceFresh
@@ -1249,14 +1243,12 @@ class WebServiceManager {
                 data.type === 'close' ||
                 (data.type === 'NSO_ZNCA_BRIDGE_EVENT' && (data.action === 'closeWebView' || data.action === 'close'))
             ) {
-                console.log('[ZeldaNotesPlus] Received closeWebView message from Zelda Notes webview');
                 document.getElementById('inAppGameWebview')?.classList.add('hidden');
                 document.getElementById('loginGate')?.classList.remove('hidden');
                 return;
             }
 
             if (data.type === 'NSO_LOGOUT') {
-                console.log('[ZeldaNotesPlus] Received explicit logout message');
                 await performLogout();
                 return;
             }
@@ -1331,7 +1323,6 @@ function checkStartupSession() {
             if (token && expiresAt > Date.now() + 60000) {
                 userSession = parsed;
                 applySessionZncaVersion(parsed);
-                console.log('%c[Auth:Startup]%c Resumed session -> Launching Zelda Notes directly', 'color: #10b981; font-weight: bold', 'color: inherit');
                 window.webServiceManager.launchZeldaNotes();
                 return;
             }
@@ -1373,9 +1364,11 @@ function setAuthGateHint(_text) {
 
 async function performFullAuthentication(options = {}) {
     if (loginInFlight) {
-        console.log('[Auth] Authentication already in progress, awaiting active flow.');
         return loginInFlight;
     }
+
+    // A successful new sign-in starts a fresh logout lifecycle.
+    logoutInProgress = false;
 
     // Immediately disable buttons BEFORE any await
     setAuthButtonsDisabled(true, 'Signing in...');
@@ -1604,7 +1597,6 @@ async function performFullAuthentication(options = {}) {
                         country: naCountry,
                         birthday: naBirthday
                     });
-                    console.log('[AccountTokenBroker] Coral cache filled from method-1 generation.');
                 } catch (brokerErr) {
                     if (window.nsoBackendMode === 'extension') {
                         console.warn('[AccountTokenBroker] Broker generation failed; trying fallback:', brokerErr);
@@ -1840,8 +1832,13 @@ async function openNintendoOAuth(e) {
 // ---------------------------------------------------------------------------
 // Logout
 // ---------------------------------------------------------------------------
+let logoutInProgress = false;
+
 async function performLogout() {
-    console.log('[Auth] Performing complete logout...');
+    // Nintendo can dispatch the same close/press event through several
+    // delegated handlers. Coalesce those into one cleanup transaction.
+    if (logoutInProgress) return;
+    logoutInProgress = true;
     try {
         sessionStorage.removeItem('nso_user_session');
         localStorage.removeItem('nso_user_session');
@@ -1994,7 +1991,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Register Service Worker for runtime caching
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js', { scope: './' }).then(() => {
-            console.log('%c[SW]%c Zelda Notes Plus Service Worker registered', 'color: #10b981; font-weight: bold', 'color: inherit');
         }).catch((err) => {
             console.warn('[SW] Registration failed:', err);
         });
