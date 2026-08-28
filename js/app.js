@@ -3,7 +3,7 @@
  * Full feature parity with nso-webapp authentication architecture:
  * Dual-mode (Worker & Extension), Simple POST Transport (CORS-free), Token Broker,
  * Remember Me Resume, Single-Use Code Retry Protection, OAuth State/PKCE Verification,
- * nxapi Web Locks & Caching, and Injected Zelda Notes runtime.
+ * and nxapi Web Locks & Caching.
  */
 
 'use strict';
@@ -1231,11 +1231,6 @@ class WebServiceManager {
                     const script = doc.createElement('script');
                     script.src = new URL('js/inject.js', window.location.href).href;
                     doc.head?.appendChild(script);
-
-                    const link = doc.createElement('link');
-                    link.rel = 'stylesheet';
-                    link.href = new URL('css/inject.css', window.location.href).href;
-                    doc.head?.appendChild(link);
                 }
             } catch (_) {}
         });
@@ -1255,8 +1250,13 @@ class WebServiceManager {
             const data = event.data;
             if (!data || typeof data !== 'object') return;
 
-            if (data.type === 'NSO_LOGOUT' || data.type === 'NSO_CLOSE_WEBVIEW' || data.type === 'close') {
-                console.log('[ZeldaNotesPlus] Received logout/close message from Zelda Notes webview');
+            if (
+                data.type === 'NSO_LOGOUT' ||
+                data.type === 'NSO_CLOSE_WEBVIEW' ||
+                data.type === 'close' ||
+                (data.type === 'NSO_ZNCA_BRIDGE_EVENT' && (data.action === 'closeWebView' || data.action === 'close'))
+            ) {
+                console.log('[ZeldaNotesPlus] Received logout/close message from Zelda Notes webview -> logging out');
                 await performLogout();
                 return;
             }
@@ -1990,10 +1990,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     initAuthGate();
     updateRateLimitBanner();
 
-    // Register Service Worker for Same-Origin Zelda Notes Proxy & DOM injection
+    // Register Service Worker for runtime caching
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js', { scope: './' }).then(() => {
-            console.log('%c[SW]%c Zelda Notes Plus Service Worker registered for live DOM injection', 'color: #10b981; font-weight: bold', 'color: inherit');
+            console.log('%c[SW]%c Zelda Notes Plus Service Worker registered', 'color: #10b981; font-weight: bold', 'color: inherit');
         }).catch((err) => {
             console.warn('[SW] Registration failed:', err);
         });

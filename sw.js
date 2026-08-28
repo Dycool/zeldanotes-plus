@@ -1,122 +1,132 @@
-/**
- * Zelda Notes Plus - Same-Origin Service Worker Proxy
- * Proxies Nintendo's Zelda Notes through the local origin so custom scripts,
- * styles, DOM transformations, and features can be injected with zero CORS restrictions.
+/* Zelda Notes Plus runtime cache.
+ * API/auth/GameWebService traffic is intentionally never cached here.
  */
+const STATIC_CACHE = 'zelda-static-v1';
+const IMAGE_CACHE = 'zelda-images-v1';
+const MAX_IMAGE_ENTRIES = 300;
+const MAX_STATIC_ENTRIES = 80;
 
-const ZELDA_TARGET = 'https://api.lp1.87abc152.srv.nintendo.net';
-
-self.addEventListener('install', (event) => {
-    self.skipWaiting();
-});
-
+self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil((async () => {
+        const keep = new Set([STATIC_CACHE, IMAGE_CACHE]);
+        const names = await caches.keys();
+        await Promise.all(names.filter(name => name.startsWith('zelda-') && !keep.has(name)).map(name => caches.delete(name)));
+        await self.clients.claim();
+    })());
 });
 
-self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
-
-    // 1. Intercept embedded entry point /zelda-app/
-    if (url.pathname === '/zelda-app' || url.pathname === '/zelda-app/') {
-        event.respondWith(handleMainHtml(event.request));
-        return;
-    }
-
-    // 2. Intercept any Nintendo font requests to prevent 401 / CORS errors
-    const isNintendoFont = url.pathname.includes('/common/font/') ||
-        ((url.hostname.includes('nintendo.net') || url.hostname.includes('srv.nintendo.net')) && (url.pathname.endsWith('.woff2') || url.pathname.endsWith('.woff')));
-
-    if (isNintendoFont) {
-        event.respondWith(
-            new Response(new ArrayBuffer(0), {
-                status: 200,
-                headers: {
-                    'Access-Control-Allow-Origin': '*',
-                    'Content-Type': 'font/woff2',
-                    'Cache-Control': 'public, max-age=31536000'
-                }
-            })
-        );
-        return;
-    }
-
-    // 3. Forward Zelda Notes static assets and API requests
-    if (url.pathname.startsWith('/_next/') || url.pathname.startsWith('/api/') || url.pathname.startsWith('/zelda-app/')) {
-        const targetPath = url.pathname.replace(/^\/zelda-app/, '');
-        const targetUrl = new URL(targetPath + url.search, ZELDA_TARGET);
-
-        event.respondWith(
-            fetch(targetUrl.href, {
-                method: event.request.method,
-                headers: event.request.headers,
-                body: ['GET', 'HEAD'].includes(event.request.method) ? undefined : event.request.body,
-                credentials: 'include'
-            }).then(async (response) => {
-                // If this is a CSS stylesheet, sanitize @font-face declarations
-                if (url.pathname.endsWith('.css')) {
-                    try {
-                        let cssText = await response.text();
-                        cssText = cssText.replace(/@font-face\s*\{[\s\S]*?\}/gi, '');
-                        return new Response(cssText, {
-                            status: response.status,
-                            statusText: response.statusText,
-                            headers: {
-                                'Content-Type': 'text/css; charset=utf-8',
-                                'Access-Control-Allow-Origin': '*'
-                            }
-                        });
-                    } catch (_) {}
-                }
-                return response;
-            }).catch(() => {
-                return fetch(event.request);
-            })
-        );
-    }
-});
-
-async function handleMainHtml(request) {
+async function trimCache(cacheName, maxEntries) {
     try {
-        const response = await fetch(ZELDA_TARGET + '/', {
-            headers: request.headers,
-            credentials: 'include'
-        });
+        const cache = await caches.open(cacheName);
+        const keys = await cache.keys();
+        const excess = keys.length - maxEntries;
+        if (excess > 0) await Promise.all(keys.slice(0, excess).map(key => cache.delete(key)));
+    } catch (_) {}
+}
 
-        let html = await response.text();
-
-        // Strip font preloads and font-faces
-        html = html.replace(/<link[^>]+(?:common\/font|\.woff2?)[^>]*>/gi, '');
-        html = html.replace(/<link[^>]+as=["']font["'][^>]*>/gi, '');
-        html = html.replace(/@font-face\s*\{[\s\S]*?\/common\/font\/[\s\S]*?\}/gi, '');
-
-        // Inject custom script and CSS into the HTML before browser parsing
-        const injection = `
-            <link rel="preconnect" href="https://fonts.googleapis.com">
-            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/css/inject.css">
-            <script src="/js/inject.js"></script>
-        `;
-
-        if (html.includes('</head>')) {
-            html = html.replace('</head>', `${injection}</head>`);
-        } else {
-            html = injection + html;
+async function cacheFirst(request, cacheName) {
+    const cache = await caches.open(cacheName);
+    const hit = await cache.match(request);
+    if (hit) return hit;
+    try {
+        const response = await fetch(request);
+        if (response && (response.ok || response.type === 'opaque')) {
+            await cache.put(request, response.clone()).catch(() => {});
+            if (cacheName === IMAGE_CACHE) void trimCache(IMAGE_CACHE, MAX_IMAGE_ENTRIES);
+            if (cacheName === STATIC_CACHE) void trimCache(STATIC_CACHE, MAX_STATIC_ENTRIES);
         }
-
-        return new Response(html, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: {
-                'Content-Type': 'text/html; charset=utf-8',
-                'Cache-Control': 'no-cache'
-            }
-        });
+        return response;
     } catch (err) {
-        return new Response(`<!DOCTYPE html><html><body><h2>Failed to load Zelda Notes: ${err.message}</h2></body></html>`, {
-            status: 502,
-            headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        if (request.destination === 'image') {
+            return new Response('', { status: 408, statusText: 'Image Fetch Failed' });
+        }
+        throw err;
+    }
+}
+
+async function networkFirst(request, cacheName) {
+    const cache = await caches.open(cacheName);
+    try {
+        const response = await fetch(request);
+        if (response && (response.ok || response.type === 'opaque')) {
+            await cache.put(request, response.clone()).catch(() => {});
+            if (cacheName === STATIC_CACHE) void trimCache(STATIC_CACHE, MAX_STATIC_ENTRIES);
+        }
+        return response;
+    } catch (error) {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        return new Response('/* Offline fallback */', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'application/javascript; charset=utf-8' }
         });
     }
 }
+
+async function handleNavigation(request) {
+    try {
+        const networkResponse = await fetch(request);
+        if (networkResponse && (networkResponse.ok || networkResponse.type === 'opaque')) {
+            const cache = await caches.open(STATIC_CACHE);
+            cache.put(request, networkResponse.clone()).catch(() => {});
+        }
+        return networkResponse;
+    } catch (err) {
+        const cached = await caches.match(request) ||
+                       await caches.match('./index.html') ||
+                       await caches.match('index.html');
+        if (cached) return cached;
+        return new Response('Network error and page is not cached offline.', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
+    }
+}
+
+self.addEventListener('fetch', (event) => {
+    const request = event.request;
+    if (request.method !== 'GET') return;
+    if (!request.url.startsWith('http')) return;
+
+    const url = new URL(request.url);
+
+    // Never cache Cloudflare/Nintendo/nxapi API calls or proxied game-service pages.
+    if (
+        url.hostname.includes('workers.dev') ||
+        url.pathname.includes('/api/nso/') ||
+        url.pathname.includes('/proxy') ||
+        url.hostname.includes('nintendo.net') ||
+        url.hostname.includes('fancy.org.uk')
+    ) {
+        return;
+    }
+
+    if (request.mode === 'navigate' || request.destination === 'document') {
+        event.respondWith(handleNavigation(request));
+        return;
+    }
+
+    if (request.destination === 'image') {
+        event.respondWith(cacheFirst(request, IMAGE_CACHE));
+        return;
+    }
+
+    if (url.origin === self.location.origin && request.destination === 'script') {
+        event.respondWith(networkFirst(request, STATIC_CACHE));
+        return;
+    }
+
+    if (url.origin === self.location.origin && ['style', 'font'].includes(request.destination)) {
+        event.respondWith(cacheFirst(request, STATIC_CACHE));
+        return;
+    }
+});
+
+self.addEventListener('message', (event) => {
+    if (event.data?.type === 'CLEAR_RUNTIME') {
+        event.waitUntil(caches.delete(IMAGE_CACHE));
+    }
+});
