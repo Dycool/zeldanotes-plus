@@ -1212,10 +1212,11 @@ class WebServiceManager {
         wrap.appendChild(frame);
 
         frame.addEventListener('load', () => {
-            setTimeout(() => {
-                document.getElementById('gwsNativeLoading')?.classList.add('is-complete');
-                setTimeout(() => document.getElementById('gwsNativeLoading')?.classList.add('hidden'), 200);
-            }, 300);
+            // The iframe load event already means the document is ready; avoid
+            // adding an artificial half-second delay before showing it.
+            const nativeLoading = document.getElementById('gwsNativeLoading');
+            nativeLoading?.classList.add('is-complete');
+            setTimeout(() => nativeLoading?.classList.add('hidden'), 50);
         });
     }
 
@@ -1252,7 +1253,7 @@ class WebServiceManager {
 
             if (data.type === 'completeLoading' || data.type === 'serviceReady' || data.type === 'NSO_COMPLETE_LOADING') {
                 document.getElementById('gwsNativeLoading')?.classList.add('is-complete');
-                setTimeout(() => document.getElementById('gwsNativeLoading')?.classList.add('hidden'), 150);
+                setTimeout(() => document.getElementById('gwsNativeLoading')?.classList.add('hidden'), 50);
             }
 
             if (data.type === 'getGameWebToken' || data.type === 'requestTokenRefresh' || data.type === 'NSO_REQUEST_GAME_WEB_TOKEN') {
@@ -1690,6 +1691,12 @@ async function performFullAuthentication(options = {}) {
             bindNxapiCoralContext(naId, activeZncaVersion(data));
             sessionStorage.setItem('nso_user_session', JSON.stringify(data));
 
+            // Start the Zelda service-token request while remember-me
+            // bookkeeping is still running. launchZeldaNotes() reuses this
+            // in-flight request, removing an otherwise serial network wait.
+            void window.webServiceManager.getGameWebServiceToken(ZELDA_SERVICE_ID)
+                .catch(() => {});
+
             // Persist Remember Me ONLY after complete Coral Account/Login flow succeeds!
             const rememberCheckbox = document.getElementById('rememberMeCheckbox');
             const shouldRemember = rememberCheckbox?.checked === true;
@@ -1700,43 +1707,42 @@ async function performFullAuthentication(options = {}) {
                 }
                 updateRememberedUI();
             } else if (shouldRemember && longLivedSessionToken) {
-                try {
-                    setAuthGateHint('Saving encrypted session on server…');
-                    const remResp = await fetch(`${WORKER_URL}/api/nso/remember/save`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ sessionToken: longLivedSessionToken })
-                    });
-                    if (remResp.ok) {
-                        const rememberData = await remResp.json().catch(() => ({}));
-                        const rememberExpiresAt = Number(rememberData.expiresAt || 0);
-                        if (rememberExpiresAt > Date.now()) {
-                            localStorage.setItem('nso_has_remembered_account', 'true');
-                            localStorage.setItem('nso_remember_expires_at', String(rememberExpiresAt));
-                            localStorage.setItem('nso_user_session', JSON.stringify(data));
-                        } else {
-                            localStorage.removeItem('nso_has_remembered_account');
-                            localStorage.removeItem('nso_remember_expires_at');
+                // Remember-me persistence is independent of opening Zelda
+                // Notes. Keep it off the critical path for first paint.
+                void (async () => {
+                    try {
+                        const remResp = await fetch(`${WORKER_URL}/api/nso/remember/save`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            keepalive: true,
+                            body: JSON.stringify({ sessionToken: longLivedSessionToken })
+                        });
+                        if (remResp.ok) {
+                            const rememberData = await remResp.json().catch(() => ({}));
+                            const rememberExpiresAt = Number(rememberData.expiresAt || 0);
+                            if (rememberExpiresAt > Date.now()) {
+                                localStorage.setItem('nso_has_remembered_account', 'true');
+                                localStorage.setItem('nso_remember_expires_at', String(rememberExpiresAt));
+                                localStorage.setItem('nso_user_session', JSON.stringify(data));
+                            } else {
+                                localStorage.removeItem('nso_has_remembered_account');
+                                localStorage.removeItem('nso_remember_expires_at');
+                            }
+                            updateRememberedUI();
                         }
-                        updateRememberedUI();
-                    } else {
-                        await remResp.json().catch(() => ({}));
+                    } catch (_) {
                     }
-                } catch (_) {
-                }
+                })();
             } else {
                 localStorage.removeItem('nso_has_remembered_account');
                 localStorage.removeItem('nso_remember_expires_at');
                 localStorage.removeItem('nso_user_session');
                 localStorage.removeItem('nso_gws_tokens');
-                try {
-                    await fetch(`${WORKER_URL}/api/nso/remember/forget`, {
-                        method: 'POST',
-                        credentials: 'include'
-                    });
-                } catch (_) {
-                }
+                void fetch(`${WORKER_URL}/api/nso/remember/forget`, {
+                    method: 'POST',
+                    credentials: 'include'
+                }).catch(() => {});
                 updateRememberedUI();
             }
 
