@@ -388,7 +388,6 @@ window.nsoDispatchExtensionMessage = nsoDispatchExtensionMessage;
             const bodyContent = typeof extRes.text === 'string' ? extRes.text : JSON.stringify(extRes.data !== undefined ? extRes.data : extRes);
             return new Response(bodyContent, { status, headers });
         } catch (extErr) {
-            console.warn('[NSO Transport] Extension request failed, falling back to worker:', extErr?.message);
             throw extErr;
         }
     }
@@ -471,8 +470,7 @@ async function proxyFetch(targetUrl, options = {}) {
                 'X-NSO-Active-Backend': 'extension'
             });
             return new Response(textContent, { status, headers });
-        } catch (extErr) {
-            console.warn('[ProxyFetch] Extension NSO_PROXY failed, falling back to worker:', extErr);
+        } catch (_) {
         }
     }
 
@@ -1186,7 +1184,6 @@ class WebServiceManager {
 
             this.mountFrame(webviewUrl);
         } catch (err) {
-            console.error('[LaunchError]', err);
             loading?.classList.add('hidden');
             alert(`Could not open Zelda Notes: ${err.message || err}`);
             loginGate?.classList.remove('hidden');
@@ -1268,8 +1265,7 @@ class WebServiceManager {
                         token: freshToken,
                         isZelda: true
                     }, (window.nsoBackendMode === 'extension' ? '*' : webviewOrigin));
-                } catch (e) {
-                    console.warn('[Bridge] Token refresh error:', e);
+                } catch (_) {
                 }
             }
         });
@@ -1326,8 +1322,7 @@ function checkStartupSession() {
                 window.webServiceManager.launchZeldaNotes();
                 return;
             }
-        } catch (e) {
-            console.warn('[Startup] Invalid cached session structure:', e);
+        } catch (_) {
         }
         sessionStorage.removeItem('nso_user_session');
         userSession = null;
@@ -1546,8 +1541,7 @@ async function performFullAuthentication(options = {}) {
                 brokerSession = await startTokenBrokerSession(accessToken);
                 brokerReady = true;
                 userInfo = brokerSession?.profile || null;
-            } catch (error) {
-                console.warn('[AccountTokenBroker] Session unavailable; using canonical Coral login path:', error);
+            } catch (_) {
             }
 
             if (!userInfo) {
@@ -1598,11 +1592,7 @@ async function performFullAuthentication(options = {}) {
                         birthday: naBirthday
                     });
                 } catch (brokerErr) {
-                    if (window.nsoBackendMode === 'extension') {
-                        console.warn('[AccountTokenBroker] Broker generation failed; trying fallback:', brokerErr);
-                    } else {
-                        throw brokerErr;
-                    }
+                    if (window.nsoBackendMode !== 'extension') throw brokerErr;
                 }
             }
 
@@ -1731,11 +1721,9 @@ async function performFullAuthentication(options = {}) {
                         }
                         updateRememberedUI();
                     } else {
-                        const err = await remResp.json().catch(() => ({}));
-                        console.warn('[RememberMe] Save rejected:', err.error);
+                        await remResp.json().catch(() => ({}));
                     }
-                } catch (e) {
-                    console.warn('[RememberMe] Save error:', e);
+                } catch (_) {
                 }
             } else {
                 localStorage.removeItem('nso_has_remembered_account');
@@ -1747,8 +1735,7 @@ async function performFullAuthentication(options = {}) {
                         method: 'POST',
                         credentials: 'include'
                     });
-                } catch (e) {
-                    console.warn('[RememberMe] Could not revoke an older remember grant:', e);
+                } catch (_) {
                 }
                 updateRememberedUI();
             }
@@ -1772,7 +1759,6 @@ async function performFullAuthentication(options = {}) {
             }
 
             if (!userSession) releaseTokenBrokerSession({ keepalive: true });
-            console.error('[Auth Error]', err);
             const displayMsg = userFacingErrorMessage(err, 'Sign in failed. Please try again.');
             alert(displayMsg);
             setAuthGateHint(displayMsg);
@@ -1991,8 +1977,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Register Service Worker for runtime caching
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js', { scope: './' }).then(() => {
-        }).catch((err) => {
-            console.warn('[SW] Registration failed:', err);
+        }).catch(() => {
         });
     }
 
