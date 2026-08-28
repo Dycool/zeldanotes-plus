@@ -1224,15 +1224,6 @@ class WebServiceManager {
                 document.getElementById('gwsNativeLoading')?.classList.add('is-complete');
                 setTimeout(() => document.getElementById('gwsNativeLoading')?.classList.add('hidden'), 200);
             }, 300);
-
-            try {
-                const doc = frame.contentDocument || frame.contentWindow?.document;
-                if (doc) {
-                    const script = doc.createElement('script');
-                    script.src = new URL('js/inject.js', window.location.href).href;
-                    doc.head?.appendChild(script);
-                }
-            } catch (_) {}
         });
     }
 
@@ -1251,12 +1242,18 @@ class WebServiceManager {
             if (!data || typeof data !== 'object') return;
 
             if (
-                data.type === 'NSO_LOGOUT' ||
                 data.type === 'NSO_CLOSE_WEBVIEW' ||
                 data.type === 'close' ||
                 (data.type === 'NSO_ZNCA_BRIDGE_EVENT' && (data.action === 'closeWebView' || data.action === 'close'))
             ) {
-                console.log('[ZeldaNotesPlus] Received logout/close message from Zelda Notes webview -> logging out');
+                console.log('[ZeldaNotesPlus] Received closeWebView message from Zelda Notes webview');
+                document.getElementById('inAppGameWebview')?.classList.add('hidden');
+                document.getElementById('loginGate')?.classList.remove('hidden');
+                return;
+            }
+
+            if (data.type === 'NSO_LOGOUT') {
+                console.log('[ZeldaNotesPlus] Received explicit logout message');
                 await performLogout();
                 return;
             }
