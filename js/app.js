@@ -1162,6 +1162,7 @@ class WebServiceManager {
             const userProfile = userSession?.result?.user || userSession?.user;
             const language = userProfile?.language || 'en-GB';
             const country = userProfile?.country || 'GB';
+            const shareHandle = userProfile?.nickname || userProfile?.screenName || userProfile?.name || '';
 
             const createResp = await fetch(`${ZELDA_WORKER_URL}/api/nso/service/session/create`, {
                 method: 'POST',
@@ -1172,7 +1173,8 @@ class WebServiceManager {
                     serviceUri: ZELDA_SERVICE_URI,
                     token: token,
                     language,
-                    country
+                    country,
+                    shareHandle
                 })
             });
 
