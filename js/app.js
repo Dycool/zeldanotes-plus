@@ -12,6 +12,7 @@
 // Constants & Configuration
 // ---------------------------------------------------------------------------
 const WORKER_URL = window.WORKER_URL || 'https://nso-worker-backend.diogoenes0.workers.dev';
+const ZELDA_WORKER_URL = window.ZELDA_WORKER_URL || 'https://zeldanotes-worker-backend.diogoenes0.workers.dev';
 const DEFAULT_NSO_EXTENSION_ID = 'bjcigdmffhlolfpaocccgclocgdnenfc';
 const NSO_EXTENSION_ID = window.NSO_EXTENSION_ID || localStorage.getItem('nso_extension_id') || DEFAULT_NSO_EXTENSION_ID;
 
@@ -1162,7 +1163,7 @@ class WebServiceManager {
             const language = userProfile?.language || 'en-GB';
             const country = userProfile?.country || 'GB';
 
-            const createResp = await fetch(`${WORKER_URL}/api/nso/service/session/create`, {
+            const createResp = await fetch(`${ZELDA_WORKER_URL}/api/nso/service/session/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -1230,13 +1231,15 @@ class WebServiceManager {
     initPostMessageListener() {
         window.addEventListener('message', async (event) => {
             const workerOrigin = new URL(WORKER_URL).origin;
+            const zeldaWorkerOrigin = new URL(ZELDA_WORKER_URL).origin;
+            const webviewOrigin = workerOrigin === zeldaWorkerOrigin ? workerOrigin : zeldaWorkerOrigin;
             const isNintendoOrigin = typeof event.origin === 'string' && (
                 event.origin.endsWith('.srv.nintendo.net') ||
                 event.origin.endsWith('.nintendo.net') ||
                 event.origin.endsWith('.nintendo.com')
             );
             const isExtensionMode = window.nsoBackendMode === 'extension';
-            if (event.origin !== workerOrigin && !(isExtensionMode && isNintendoOrigin)) return;
+            if (event.origin !== workerOrigin && event.origin !== zeldaWorkerOrigin && !(isExtensionMode && isNintendoOrigin)) return;
 
             const data = event.data;
             if (!data || typeof data !== 'object') return;
@@ -1272,7 +1275,7 @@ class WebServiceManager {
                         requestId: data.requestId,
                         token: freshToken,
                         isZelda: true
-                    }, (window.nsoBackendMode === 'extension' ? '*' : workerOrigin));
+                    }, (window.nsoBackendMode === 'extension' ? '*' : webviewOrigin));
                 } catch (e) {
                     console.warn('[Bridge] Token refresh error:', e);
                 }
@@ -1848,6 +1851,7 @@ async function performLogout() {
         localStorage.removeItem('nso_pkce_verifier');
         localStorage.removeItem('nso_auth_state');
         await fetch(`${WORKER_URL}/api/nso/remember/forget`, { method: 'POST', credentials: 'include' }).catch(() => {});
+        await fetch(`${ZELDA_WORKER_URL}/api/nso/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
         await releaseTokenBrokerSession({ keepalive: true });
     } catch (_) {}
 
