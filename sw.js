@@ -24,7 +24,10 @@ self.addEventListener('fetch', (event) => {
     }
 
     // 2. Intercept any Nintendo font requests to prevent 401 / CORS errors
-    if (url.pathname.includes('/common/font/') || url.pathname.endsWith('.woff2') || url.pathname.endsWith('.woff')) {
+    const isNintendoFont = url.pathname.includes('/common/font/') ||
+        ((url.hostname.includes('nintendo.net') || url.hostname.includes('srv.nintendo.net')) && (url.pathname.endsWith('.woff2') || url.pathname.endsWith('.woff')));
+
+    if (isNintendoFont) {
         event.respondWith(
             new Response(new ArrayBuffer(0), {
                 status: 200,

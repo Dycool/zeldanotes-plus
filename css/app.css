@@ -173,6 +173,11 @@ input, textarea {
     box-shadow: var(--shadow-card);
 }
 
+#loginWorkflow.remembered-consent-only .auth-steps,
+#loginWorkflow.remembered-consent-only .remember-me-option {
+    display: none !important;
+}
+
 .nxapi-disclosure {
     margin: 0 0 14px;
     background: #f8fafc;
@@ -232,6 +237,11 @@ input, textarea {
     accent-color: var(--zelda-green);
     width: 16px;
     height: 16px;
+}
+
+.nxapi-disclosure.needs-consent {
+    border-color: rgba(212, 175, 55, 0.85);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
 }
 
 .auth-steps {
