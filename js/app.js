@@ -341,6 +341,7 @@ window.nsoDispatchExtensionMessage = nsoDispatchExtensionMessage;
         };
         const wrapped = async function startTokenBrokerSessionFromCombinedResume() {
             restore();
+            try { window.webServiceManager?.hydrateBrokerGameTokens(snapshot.gws); } catch (_) {}
             return snapshot;
         };
         wrapped.__nsoCombinedResumeOneShot = true;
@@ -416,7 +417,10 @@ window.nsoDispatchExtensionMessage = nsoDispatchExtensionMessage;
                         const clientId = String(tokenBrokerClientId() || '');
                         if (/^[A-Za-z0-9_-]{8,128}$/.test(clientId)) {
                             headers.set('Content-Type', 'text/plain;charset=UTF-8');
-                            nextInit.body = JSON.stringify({ clientId });
+                            nextInit.body = JSON.stringify({
+                                clientId,
+                                warmServiceIds: [ZELDA_SERVICE_ID]
+                            });
                             combinedResume = true;
                         }
                     } else {
@@ -809,7 +813,7 @@ async function parseCoralResponse(response, requestOptions = {}) {
 // ---------------------------------------------------------------------------
 // Account Token Broker
 // ---------------------------------------------------------------------------
-async function startTokenBrokerSession(nintendoAccessToken) {
+async function startTokenBrokerSession(nintendoAccessToken, preparation = {}) {
     if (!nintendoAccessToken) return null;
     const response = await fetch(`${WORKER_URL}/api/nso/cache/session/start`, {
         method: 'POST',
@@ -817,7 +821,11 @@ async function startTokenBrokerSession(nintendoAccessToken) {
         credentials: 'include',
         body: JSON.stringify({
             nintendoAccessToken,
-            clientId: tokenBrokerClientId()
+            clientId: tokenBrokerClientId(),
+            ...(preparation?.idToken ? { idToken: preparation.idToken } : {}),
+            ...(preparation?.nxapiAccessToken ? { nxapiAccessToken: preparation.nxapiAccessToken } : {}),
+            ...(Array.isArray(preparation?.warmServiceIds) ? { warmServiceIds: preparation.warmServiceIds } : {}),
+            ...(preparation?.zncaVersion ? { zncaVersion: preparation.zncaVersion } : {})
         })
     });
     let data = {};
@@ -944,6 +952,21 @@ class WebServiceManager {
                 localStorage.removeItem('nso_gws_tokens');
             }
         } catch (_) {}
+    }
+
+    hydrateBrokerGameTokens(tokens) {
+        if (!tokens || typeof tokens !== 'object') return 0;
+        let count = 0;
+        for (const [serviceId, entry] of Object.entries(tokens)) {
+            if (!/^\d+$/.test(String(serviceId)) || !entry?.token || Number(entry.expiresAt || 0) <= Date.now() + 60000) continue;
+            this.tokenCache.set(String(serviceId), {
+                token: String(entry.token),
+                expiresAt: Number(entry.expiresAt)
+            });
+            count++;
+        }
+        if (count) this.savePersistentGameTokens();
+        return count;
     }
 
     getCachedGameWebServiceToken(serviceId) {
@@ -1103,12 +1126,11 @@ class WebServiceManager {
         if (existingFlight) return await existingFlight.promise;
 
         const fetchPromise = (async () => {
-            let result;
-            if (!forceFresh) {
-                result = await this.requestBrokerCachedToken(idStr, { signal: options.signal, forceFresh: false });
-            } else {
-                result = { miss: true };
-            }
+            // The Worker is deliberately stateless: after the browser-local
+            // cache above misses, /service/token/cache can only return miss.
+            // Do not spend a round trip merely to discover that; generate the
+            // request-local token immediately.
+            let result = { miss: true };
 
             if (!result?.token && !result?.unavailable) {
                 result = await this.requestBrokerGeneratedToken(idStr, traceId, {
@@ -1539,7 +1561,12 @@ async function performFullAuthentication(options = {}) {
             let brokerSession = null;
             let userInfo = null;
             try {
-                brokerSession = await startTokenBrokerSession(accessToken);
+                brokerSession = await startTokenBrokerSession(accessToken, {
+                    idToken,
+                    nxapiAccessToken: nxapiAuthSession?.accessToken,
+                    warmServiceIds: [ZELDA_SERVICE_ID],
+                    zncaVersion: activeZncaVersion()
+                });
                 brokerReady = true;
                 userInfo = brokerSession?.profile || null;
             } catch (_) {
@@ -1690,6 +1717,7 @@ async function performFullAuthentication(options = {}) {
             applySessionZncaVersion(data);
             bindNxapiCoralContext(naId, activeZncaVersion(data));
             sessionStorage.setItem('nso_user_session', JSON.stringify(data));
+            window.webServiceManager.hydrateBrokerGameTokens(brokerSession?.gws);
 
             // Start the Zelda service-token request while remember-me
             // bookkeeping is still running. launchZeldaNotes() reuses this
@@ -1908,7 +1936,7 @@ function initAuthGate() {
             if (!value || !(value.includes('session_token_code=') || value.startsWith('eyJ') || value.startsWith('{') || value.length >= 30)) return;
             if (!requireNxapiConsent()) return;
             performFullAuthentication({ input: value });
-        }, 300);
+        }, 50);
     };
 
     if (beginSignInBtn) {
