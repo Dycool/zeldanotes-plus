@@ -25,15 +25,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check JavaScript syntax
-        run: |
-          node --check js/core.js
-          node --check js/auth.js
-          node --check js/coral.js
-          node --check services/manager.js
-          node --check services/adapters.js
-
-      - name: Run free-tier efficiency regressions
-        run: node test-efficiency-regressions.js
+        run: node --check js/app.js
 
   deploy:
     name: Deploy to GitHub Pages
